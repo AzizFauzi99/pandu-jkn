@@ -1,0 +1,4 @@
+# local files/folder
+.vscode
+.venv
+.env
