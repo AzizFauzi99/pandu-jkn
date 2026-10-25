@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from router import chat, health
+from router import chat, health, summary
 
 app = FastAPI(
     title="Pandu JKN",
@@ -11,3 +11,4 @@ app = FastAPI(
 
 app.include_router(health.router, prefix="")
 app.include_router(chat.router, prefix="/api")
+app.include_router(summary.router, prefix="/api")
