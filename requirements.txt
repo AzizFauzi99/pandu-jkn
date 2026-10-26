@@ -6,3 +6,11 @@ deepagents>=0.7.32,<0.8
 langchain-openai>=1.7,<2
 langchain-core>=1.7,<2
 langgraph>=1.2,<2
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+deepagents
+langchain-openai
+pyjwt
+bcrypt
