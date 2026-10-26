@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -5,7 +6,10 @@ from deepagents import create_deep_agent
 from langchain_core.messages import AIMessageChunk
 from langgraph.checkpoint.memory import InMemorySaver
 
+from module.diagnostic import diagnostic_subagent
 from utils.llm import load_llm
+
+logger = logging.getLogger("uvicorn.error")
 from utils.prompt import supervisor_prompt
 
 
@@ -13,7 +17,7 @@ class Agents:
     def __init__(self):
         self.llm_instance = load_llm
         self.checkpointer_instance = InMemorySaver()
-        self.subagents = []
+        self.subagents = [diagnostic_subagent]
 
     def build_supervisor(self):
         current_datetime = datetime.now(ZoneInfo("Asia/Jakarta")).isoformat(
@@ -26,6 +30,11 @@ class Agents:
             checkpointer=self.checkpointer_instance,
         )
 
+    def get_messages(self, session_id: str):
+        config = {"configurable": {"thread_id": session_id}}
+        state = self.build_supervisor().get_state(config)
+        return state.values.get("messages", [])
+
     def ai_agent(self, user_input: str, session_id: str):
         agent_instance = self.build_supervisor()
         config = {"configurable": {"thread_id": session_id}}
@@ -37,6 +46,10 @@ class Agents:
         ):
             if not isinstance(chunk, AIMessageChunk):
                 continue
+
+            for call in chunk.tool_call_chunks:
+                if call.get("name"):
+                    logger.info("supervisor tool call: %s", call["name"])
 
             content = chunk.content
 
