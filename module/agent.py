@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessageChunk
 from langgraph.checkpoint.memory import InMemorySaver
 
 from module.diagnostic import diagnostic_subagent
+from module.nutrition import nutrition_subagent
 from utils.llm import load_llm
 
 logger = logging.getLogger("uvicorn.error")
@@ -17,7 +18,7 @@ class Agents:
     def __init__(self):
         self.llm_instance = load_llm
         self.checkpointer_instance = InMemorySaver()
-        self.subagents = [diagnostic_subagent]
+        self.subagents = [diagnostic_subagent, nutrition_subagent]
 
     def build_supervisor(self):
         current_datetime = datetime.now(ZoneInfo("Asia/Jakarta")).isoformat(

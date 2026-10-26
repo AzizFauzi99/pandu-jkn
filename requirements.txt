@@ -14,3 +14,4 @@ deepagents
 langchain-openai
 pyjwt
 bcrypt
+tzdata
