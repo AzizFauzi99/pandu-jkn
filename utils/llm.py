@@ -1,6 +1,5 @@
 import os
 
-import httpx2
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
