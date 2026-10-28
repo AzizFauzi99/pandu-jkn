@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 
 import psycopg
 from dotenv import load_dotenv
@@ -19,6 +20,9 @@ def run_select(sql: str, params: tuple | None = None, limit: int = 50):
     with psycopg.connect(os.getenv("DATABASE_URL"), connect_timeout=10) as conn:
         conn.read_only = True
         with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute("set statement_timeout = 15000")
+            cur.execute("set statement_timeout = 60000")
             cur.execute(sql, params)
-            return cur.fetchmany(limit)
+            return [
+                {k: float(v) if isinstance(v, Decimal) else v for k, v in row.items()}
+                for row in cur.fetchmany(limit)
+            ]
