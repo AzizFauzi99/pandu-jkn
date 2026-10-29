@@ -2,12 +2,15 @@ from utils.db import run_admin
 
 
 def revoke(jti: str, expires_at: float) -> None:
-    run_admin("delete from token_blacklist where expires_at <= now()")
+    """Tandai token sebagai sudah logout. `expires_at` dalam epoch detik."""
+    run_admin("DELETE FROM token_blacklist WHERE expires_at <= now()")
     run_admin(
-        "insert into token_blacklist (jti, expires_at) values (%s, to_timestamp(%s))",
+        "INSERT INTO token_blacklist (jti, expires_at) "
+        "VALUES (%s, to_timestamp(%s)) ON CONFLICT (jti) DO NOTHING",
         (jti, expires_at),
     )
 
 
 def is_revoked(jti: str) -> bool:
-    return bool(run_admin("select 1 from token_blacklist where jti = %s", (jti,)))
+    rows = run_admin("SELECT 1 FROM token_blacklist WHERE jti = %s", (jti,))
+    return bool(rows)

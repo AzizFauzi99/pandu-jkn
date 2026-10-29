@@ -6,80 +6,88 @@ from utils.db import run_admin
 
 DEFAULT_TITLE = "Percakapan baru"
 
-_columns = "id, user_nik, title, starred, created_at, updated_at"
+COLUMNS = "id, user_nik, title, starred, created_at, updated_at"
 
 
 @dataclass
 class Session:
     id: str
-    user_nik: int
+    user_id: str  # NIK pemilik session
     title: str
     starred: bool
     created_at: datetime
     updated_at: datetime
 
 
-def create_session(user_nik: str, title: str | None = None) -> Session:
-    rows = run_admin(
-        f"insert into sessions (id, user_nik, title) values (%s, %s, %s) returning {_columns}",
-        (str(uuid.uuid4()), int(user_nik), (title or "").strip() or DEFAULT_TITLE),
+def _to_session(row: dict) -> Session:
+    return Session(
+        id=row["id"],
+        user_id=str(row["user_nik"]),
+        title=row["title"],
+        starred=row["starred"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
     )
-    return Session(**rows[0])
 
 
-def list_sessions(user_nik: str, starred: bool | None = None) -> list[Session]:
-    sql = f"select {_columns} from sessions where user_nik = %s"
-    params = [int(user_nik)]
+# Semua fungsi menyaring berdasarkan user_id (NIK), jadi session milik user
+# lain dianggap tidak ada.
+def create_session(user_id: str, title: str | None = None) -> Session:
+    rows = run_admin(
+        f"INSERT INTO sessions (id, user_nik, title) VALUES (%s, %s, %s) "
+        f"RETURNING {COLUMNS}",
+        (str(uuid.uuid4()), user_id, (title or "").strip() or DEFAULT_TITLE),
+    )
+    return _to_session(rows[0])
+
+
+def list_sessions(user_id: str, starred: bool | None = None) -> list[Session]:
+    sql = f"SELECT {COLUMNS} FROM sessions WHERE user_nik = %s"
+    params: list = [user_id]
     if starred is not None:
-        sql += " and starred = %s"
+        sql += " AND starred = %s"
         params.append(starred)
+    sql += " ORDER BY updated_at DESC"
+    rows = run_admin(sql, tuple(params))
+    return [_to_session(r) for r in rows]
 
-    rows = run_admin(f"{sql} order by updated_at desc", tuple(params))
-    return [Session(**row) for row in rows]
 
-
-def get_session(user_nik: str, session_id: str) -> Session | None:
+def get_session(user_id: str, session_id: str) -> Session | None:
     rows = run_admin(
-        f"select {_columns} from sessions where id = %s and user_nik = %s",
-        (session_id, int(user_nik)),
+        f"SELECT {COLUMNS} FROM sessions WHERE id = %s AND user_nik = %s",
+        (session_id, user_id),
     )
-    return Session(**rows[0]) if rows else None
+    return _to_session(rows[0]) if rows else None
 
 
-def update_title(user_nik: str, session_id: str, title: str) -> Session | None:
+def update_title(user_id: str, session_id: str, title: str) -> Session | None:
     rows = run_admin(
-        f"""
-        update sessions set title = %s, updated_at = now()
-        where id = %s and user_nik = %s
-        returning {_columns}
-        """,
-        (title.strip(), session_id, int(user_nik)),
+        f"UPDATE sessions SET title = %s, updated_at = now() "
+        f"WHERE id = %s AND user_nik = %s RETURNING {COLUMNS}",
+        (title.strip(), session_id, user_id),
     )
-    return Session(**rows[0]) if rows else None
+    return _to_session(rows[0]) if rows else None
 
 
-def set_starred(user_nik: str, session_id: str, starred: bool) -> Session | None:
+def set_starred(user_id: str, session_id: str, starred: bool) -> Session | None:
     rows = run_admin(
-        f"""
-        update sessions set starred = %s
-        where id = %s and user_nik = %s
-        returning {_columns}
-        """,
-        (starred, session_id, int(user_nik)),
+        f"UPDATE sessions SET starred = %s WHERE id = %s AND user_nik = %s "
+        f"RETURNING {COLUMNS}",
+        (starred, session_id, user_id),
     )
-    return Session(**rows[0]) if rows else None
+    return _to_session(rows[0]) if rows else None
 
 
-def touch_session(user_nik: str, session_id: str) -> None:
+def touch_session(user_id: str, session_id: str) -> None:
     run_admin(
-        "update sessions set updated_at = now() where id = %s and user_nik = %s",
-        (session_id, int(user_nik)),
+        "UPDATE sessions SET updated_at = now() WHERE id = %s AND user_nik = %s",
+        (session_id, user_id),
     )
 
 
-def delete_session(user_nik: str, session_id: str) -> bool:
+def delete_session(user_id: str, session_id: str) -> bool:
     rows = run_admin(
-        "delete from sessions where id = %s and user_nik = %s returning id",
-        (session_id, int(user_nik)),
+        f"DELETE FROM sessions WHERE id = %s AND user_nik = %s RETURNING id",
+        (session_id, user_id),
     )
     return bool(rows)
