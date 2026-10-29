@@ -1,9 +1,16 @@
+import psycopg
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from module.token_blacklist import is_revoked, revoke
-from module.user_store import User, get_user_by_email, get_user_by_id, seed_dev_user
+from module.user_store import (
+    User,
+    create_user,
+    get_user_by_email,
+    get_user_by_id,
+    nik_terdaftar_di_ktp,
+)
 from utils.security import (
     JWT_EXPIRE_MINUTES,
     create_access_token,
@@ -18,7 +25,12 @@ bearer_scheme = HTTPBearer(auto_error=False)
 # Dipakai agar waktu respons sama baik email terdaftar maupun tidak.
 _DUMMY_HASH = hash_password("dummy-password")
 
-seed_dev_user()
+class RegisterRequest(BaseModel):
+    nama_lengkap: str = Field(min_length=1)
+    email: str = Field(min_length=3)
+    no_hp: str = Field(pattern=r"^\d{8,15}$")
+    nik: str = Field(pattern=r"^\d+$")
+    password: str = Field(min_length=8)
 
 
 class LoginRequest(BaseModel):
@@ -30,6 +42,31 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+def post_register(request: RegisterRequest):
+    try:
+        if not nik_terdaftar_di_ktp(request.nik):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="NIK tidak terdaftar"
+            )
+        if get_user_by_id(request.nik) or get_user_by_email(request.email):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="NIK atau email sudah terdaftar",
+            )
+        user = create_user(
+            request.nama_lengkap,
+            request.email,
+            request.no_hp,
+            request.nik,
+            request.password,
+        )
+    except psycopg.Error:
+        raise HTTPException(status_code=502, detail="Gagal menghubungi database")
+
+    return {"message": "Registrasi berhasil", "nik": user.id}
 
 
 @router.post("/login", response_model=TokenResponse)
