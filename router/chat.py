@@ -2,14 +2,16 @@ import base64
 import binascii
 import json
 import logging
-import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from module import session_store
 from module.agent import Agents
 from module.image_store import save_image
+from module.user_store import User
+from router.auth import get_current_user
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -50,8 +52,16 @@ def _store_images(images: list[ChatImage]) -> list[str]:
 
 
 @router.post("/chat")
-def post_chat(request: ChatRequest):
-    session_id = request.session_id or str(uuid.uuid4())
+def post_chat(request: ChatRequest, user: User = Depends(get_current_user)):
+    if request.session_id is None:
+        session = session_store.create_session(user.id)
+    else:
+        session = session_store.get_session(user.id, request.session_id)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Session tidak ditemukan")
+        session_store.touch_session(user.id, session.id)
+
+    session_id = session.id
 
     user_input = request.user_input
     for image_id in _store_images(request.images):

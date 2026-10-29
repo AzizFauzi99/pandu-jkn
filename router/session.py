@@ -1,12 +1,15 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field
 
 from module import session_store
 from module.session_store import Session
+from module.summary import _text
 from module.user_store import User
 from router.auth import get_current_user
+from router.chat import agents_instance
 
 router = APIRouter(prefix="/sessions", tags=["session"])
 
@@ -29,6 +32,11 @@ class SessionResponse(BaseModel):
     starred: bool
     created_at: datetime
     updated_at: datetime
+
+
+class MessageResponse(BaseModel):
+    role: str
+    content: str
 
 
 def _to_response(session: Session) -> SessionResponse:
@@ -67,6 +75,25 @@ def get_session(session_id: str, user: User = Depends(get_current_user)):
     return _to_response(session)
 
 
+@router.get("/{session_id}/messages", response_model=list[MessageResponse])
+def get_session_messages(session_id: str, user: User = Depends(get_current_user)):
+    if session_store.get_session(user.id, session_id) is None:
+        raise _not_found()
+
+    history = []
+    for message in agents_instance.get_messages(session_id):
+        if isinstance(message, HumanMessage):
+            role = "user"
+        elif isinstance(message, AIMessage):
+            role = "assistant"
+        else:
+            continue
+        content = _text(message.content).strip()
+        if content:
+            history.append(MessageResponse(role=role, content=content))
+    return history
+
+
 @router.patch("/{session_id}", response_model=SessionResponse)
 def patch_session(
     session_id: str,
@@ -93,4 +120,5 @@ def put_session_star(
 def delete_session(session_id: str, user: User = Depends(get_current_user)):
     if not session_store.delete_session(user.id, session_id):
         raise _not_found()
+    agents_instance.delete_messages(session_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

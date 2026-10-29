@@ -78,6 +78,13 @@ def set_starred(user_id: str, session_id: str, starred: bool) -> Session | None:
     return _to_session(rows[0]) if rows else None
 
 
+def touch_session(user_id: str, session_id: str) -> None:
+    run_admin(
+        "UPDATE sessions SET updated_at = now() WHERE id = %s AND user_nik = %s",
+        (session_id, user_id),
+    )
+
+
 def delete_session(user_id: str, session_id: str) -> bool:
     rows = run_admin(
         f"DELETE FROM sessions WHERE id = %s AND user_nik = %s RETURNING id",

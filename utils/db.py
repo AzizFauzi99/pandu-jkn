@@ -4,7 +4,9 @@ from decimal import Decimal
 import psycopg
 from dotenv import load_dotenv
 from psycopg.conninfo import make_conninfo
+from langgraph.checkpoint.postgres import PostgresSaver
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 load_dotenv()
 
@@ -42,6 +44,16 @@ def run_admin(sql: str, params: tuple | None = None):
                 {k: float(v) if isinstance(v, Decimal) else v for k, v in row.items()}
                 for row in cur.fetchall()
             ]
+
+
+def get_checkpointer():
+    pool = ConnectionPool(
+        os.getenv("DATABASE_ADMIN"),
+        kwargs={"autocommit": True, "row_factory": dict_row},
+    )
+    checkpointer = PostgresSaver(pool)
+    checkpointer.setup()
+    return checkpointer
 
 
 def run_select(sql: str, params: tuple | None = None, limit: int = 50):
