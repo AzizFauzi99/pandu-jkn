@@ -9,3 +9,13 @@ langgraph>=1.2,<2
 psycopg[binary]>=3.3,<4
 pyjwt>=2.15,<3
 bcrypt>=5.0,<6
+psycopg[binary]>=3.2,<4
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+deepagents
+langchain-openai
+pyjwt
+bcrypt
+tzdata
