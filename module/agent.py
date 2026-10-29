@@ -4,11 +4,11 @@ from zoneinfo import ZoneInfo
 
 from deepagents import create_deep_agent
 from langchain_core.messages import AIMessageChunk
-from langgraph.checkpoint.memory import InMemorySaver
 
 from module.diagnostic import diagnostic_subagent
 from module.nutrition import nutrition_subagent
 from module.helpdesk import helpdesk_subagent
+from utils.db import get_checkpointer
 from utils.llm import load_llm
 
 logger = logging.getLogger("uvicorn.error")
@@ -18,7 +18,7 @@ from utils.prompt import supervisor_prompt
 class Agents:
     def __init__(self):
         self.llm_instance = load_llm
-        self.checkpointer_instance = InMemorySaver()
+        self.checkpointer_instance = get_checkpointer()
         self.subagents = [diagnostic_subagent, nutrition_subagent]
 
     def build_supervisor(self):
@@ -36,6 +36,9 @@ class Agents:
         config = {"configurable": {"thread_id": session_id}}
         state = self.build_supervisor().get_state(config)
         return state.values.get("messages", [])
+
+    def delete_messages(self, session_id: str):
+        self.checkpointer_instance.delete_thread(session_id)
 
     def ai_agent(self, user_input: str, session_id: str):
         agent_instance = self.build_supervisor()
