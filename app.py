@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
-from router import chat, health, summary
-from router import auth, chat, health
+from router import auth, bpjs_status, chat, health, summary
 
 app = FastAPI(
     title="Pandu JKN",
@@ -14,4 +13,4 @@ app.include_router(health.router, prefix="")
 app.include_router(chat.router, prefix="/api")
 app.include_router(summary.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
-app.include_router(chat.router, prefix="/api")
+app.include_router(bpjs_status.router, prefix="/api")
