@@ -1,20 +1,16 @@
-import time
-
-# Penyimpanan sementara di memori: jti token -> waktu kedaluwarsa (epoch detik).
-# Ganti isi fungsi-fungsi di bawah dengan tabel database setelah skema tersedia.
-_revoked: dict[str, float] = {}
-
-
-def _purge_expired() -> None:
-    now = time.time()
-    for jti in [j for j, exp in _revoked.items() if exp <= now]:
-        del _revoked[jti]
+from utils.db import run_admin
 
 
 def revoke(jti: str, expires_at: float) -> None:
-    _purge_expired()
-    _revoked[jti] = expires_at
+    """Tandai token sebagai sudah logout. `expires_at` dalam epoch detik."""
+    run_admin("DELETE FROM token_blacklist WHERE expires_at <= now()")
+    run_admin(
+        "INSERT INTO token_blacklist (jti, expires_at) "
+        "VALUES (%s, to_timestamp(%s)) ON CONFLICT (jti) DO NOTHING",
+        (jti, expires_at),
+    )
 
 
 def is_revoked(jti: str) -> bool:
-    return jti in _revoked
+    rows = run_admin("SELECT 1 FROM token_blacklist WHERE jti = %s", (jti,))
+    return bool(rows)
