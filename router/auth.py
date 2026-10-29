@@ -3,7 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from module.token_blacklist import is_revoked, revoke
-from module.user_store import User, get_user_by_email, get_user_by_id, seed_dev_user
+from module.user_store import User, get_user_by_email, get_user_by_id
 from utils.security import (
     JWT_EXPIRE_MINUTES,
     create_access_token,
@@ -17,8 +17,6 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 # Dipakai agar waktu respons sama baik email terdaftar maupun tidak.
 _DUMMY_HASH = hash_password("dummy-password")
-
-seed_dev_user()
 
 
 class LoginRequest(BaseModel):

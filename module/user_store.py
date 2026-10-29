@@ -1,43 +1,33 @@
-import os
-import uuid
 from dataclasses import dataclass
 
-from utils.security import hash_password
+from module.db import connect
 
 
 @dataclass
 class User:
-    id: str
+    id: str  # email; dipakai sebagai `sub` di JWT dan kunci data milik user
     email: str
     password_hash: str
+    nik: int
+    nama_lengkap: str
 
 
-# Penyimpanan sementara di memori. Ganti isi fungsi-fungsi di bawah dengan
-# query database setelah skema user dari Database management tersedia.
-_users_by_email: dict[str, User] = {}
-
-
+# Tabel `users` dikelola Database management (register). Modul ini hanya membaca.
 def get_user_by_email(email: str) -> User | None:
-    return _users_by_email.get(email.strip().lower())
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT email, password_hash, nik, nama_lengkap FROM users "
+            "WHERE lower(email) = %s",
+            (email.strip().lower(),),
+        ).fetchone()
+    if row is None:
+        return None
+    email, password_hash, nik, nama_lengkap = row
+    return User(
+        id=email, email=email, password_hash=password_hash, nik=nik,
+        nama_lengkap=nama_lengkap,
+    )
 
 
 def get_user_by_id(user_id: str) -> User | None:
-    return next((u for u in _users_by_email.values() if u.id == user_id), None)
-
-
-def create_user(email: str, password: str) -> User:
-    user = User(
-        id=str(uuid.uuid4()),
-        email=email.strip().lower(),
-        password_hash=hash_password(password),
-    )
-    _users_by_email[user.email] = user
-    return user
-
-
-def seed_dev_user() -> None:
-    """Buat user uji lokal dari .env bila DEV_USER_EMAIL dan DEV_USER_PASSWORD diisi."""
-    email = os.getenv("DEV_USER_EMAIL")
-    password = os.getenv("DEV_USER_PASSWORD")
-    if email and password and not get_user_by_email(email):
-        create_user(email, password)
+    return get_user_by_email(user_id)
