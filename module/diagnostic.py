@@ -6,6 +6,7 @@ import psycopg
 from langchain_core.tools import tool
 
 from module.bpjs_status import cek_status
+from module.faskes import cari_faskes_db
 from utils.diagnostic_prompt import diagnostic_prompt
 
 logger = logging.getLogger("uvicorn.error")
@@ -33,21 +34,6 @@ RED_FLAGS = {
     "bibir bengkak": "Kemungkinan anafilaksis",
 }
 
-# Data dummy sampai data faskes asli tersedia.
-FASKES = [
-    {"nama": "Puskesmas Menteng", "jenis": "puskesmas", "kota": "jakarta",
-     "alamat": "Jl. Pegangsaan No. 1, Menteng", "jam": "08.00-16.00"},
-    {"nama": "Klinik Sehat Sentosa", "jenis": "klinik", "kota": "jakarta",
-     "alamat": "Jl. Cikini Raya No. 20", "jam": "08.00-21.00"},
-    {"nama": "RSUD Cipto Mangunkusumo", "jenis": "igd", "kota": "jakarta",
-     "alamat": "Jl. Diponegoro No. 71", "jam": "24 jam"},
-    {"nama": "Puskesmas Coblong", "jenis": "puskesmas", "kota": "bandung",
-     "alamat": "Jl. Coblong No. 5", "jam": "08.00-16.00"},
-    {"nama": "RSUP Hasan Sadikin", "jenis": "igd", "kota": "bandung",
-     "alamat": "Jl. Pasteur No. 38", "jam": "24 jam"},
-]
-
-
 @tool
 def check_red_flags(keluhan: str) -> dict:
     """Periksa teks keluhan pengguna terhadap tanda bahaya (red flag) gawat darurat.
@@ -67,25 +53,35 @@ def check_red_flags(keluhan: str) -> dict:
 
 @tool
 def cari_faskes(kota: str, kebutuhan: str = "puskesmas") -> list[dict]:
-    """Cari fasilitas kesehatan berdasarkan kota dan kebutuhan.
+    """Cari fasilitas kesehatan berdasarkan lokasi dan kebutuhan.
 
     Args:
-        kota: Nama kota atau kabupaten pengguna.
+        kota: Nama kota, kabupaten, atau kecamatan pengguna.
         kebutuhan: "puskesmas", "klinik", atau "igd" (gawat darurat).
     """
     logger.info("tool cari_faskes kota=%r kebutuhan=%r", kota, kebutuhan)
-    kota_key = kota.strip().lower()
-    hasil = [
-        f for f in FASKES
-        if kota_key in f["kota"] and f["jenis"] == kebutuhan.strip().lower()
-    ]
+    try:
+        hasil = cari_faskes_db(kota, kebutuhan)
+    except Exception:
+        logger.exception("cari_faskes gagal mengakses database")
+        return [
+            {
+                "ditemukan": False,
+                "pesan": (
+                    "Pencarian faskes sedang bermasalah. Minta maaf kepada pengguna, "
+                    "arahkan ke Mobile JKN (FKTP terdaftar) atau IGD terdekat bila darurat."
+                ),
+            }
+        ]
     return hasil or [
         {
             "ditemukan": False,
             "pesan": (
-                f"Data faskes '{kebutuhan}' di '{kota}' belum tersedia di sistem. "
-                "Sampaikan hal ini kepada pengguna, jangan meminta kecamatan, dan "
-                "arahkan ke Mobile JKN (FKTP terdaftar) atau IGD terdekat bila darurat."
+                "Sampaikan teks berikut kepada pengguna apa adanya, jangan "
+                "menambah pertanyaan apa pun: "
+                f"'Maaf, data faskes di {kota} belum tersedia di sistem saya. "
+                "Untuk berobat dengan JKN, cek FKTP terdaftar Anda di Mobile JKN. "
+                "Jika kondisi darurat, segera ke IGD terdekat atau hubungi 119.'"
             ),
         }
     ]
