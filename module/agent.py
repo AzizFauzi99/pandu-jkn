@@ -8,6 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from module.diagnostic import diagnostic_subagent
 from module.nutrition import nutrition_subagent
+from module.helpdesk import helpdesk_subagent
 from utils.llm import load_llm
 
 logger = logging.getLogger("uvicorn.error")
