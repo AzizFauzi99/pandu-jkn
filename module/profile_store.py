@@ -122,6 +122,26 @@ def get_profile(email: str) -> ProfileData:
     )
 
 
+def get_profile_by_nik(nik: str) -> ProfileData:
+    with psycopg.connect(get_conninfo(), connect_timeout=10) as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute("select * from users where nik = %s", (nik,))
+            row = cur.fetchone()
+    if row is None:
+        return ProfileData()
+    return ProfileData(
+        nama_lengkap=row["nama_lengkap"],
+        nomor_hp=row["no_hp"],
+        tanggal_lahir=row["tanggal_lahir"],
+        jenis_kelamin=_GENDER_FROM_DB.get(row["jenis_kelamin"]),
+        nik=str(row["nik"]),
+        tinggi_badan_cm=_num(row["tinggi_badan"]),
+        berat_badan_kg=_num(row["berat_badan"]),
+        alergi_makanan=_load_list(row["alergi_makanan"]),
+        riwayat_penyakit=_load_list(row["riwayat_penyakit"]),
+    )
+
+
 def save_profile(email: str, password_hash: str, profile: ProfileData) -> ProfileData:
     """Ganti seluruh profil baris users milik email ini (insert bila belum ada)."""
     with psycopg.connect(get_conninfo(), connect_timeout=10) as conn:
