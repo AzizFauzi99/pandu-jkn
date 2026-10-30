@@ -39,7 +39,9 @@ def get_user_profile(user: User = Depends(get_current_user)):
 
 @router.put("/profile", response_model=ProfileResponse)
 def put_user_profile(profile: ProfileData, user: User = Depends(get_current_user)):
-    # Email mengikuti akun login sehingga hanya-baca; PUT mengganti seluruh profil.
+    # Email dan NIK mengikuti akun login sehingga hanya-baca; PUT mengganti seluruh profil.
+    # NIK dipaksa sama dengan pemilik akun agar tidak bisa diubah lewat API.
+    profile = profile.model_copy(update={"nik": user.id})
     try:
         saved = save_profile(user.email, user.password_hash, profile)
     except (ProfileIncomplete, NikNotFound) as e:
