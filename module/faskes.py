@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 
 import psycopg
 from dotenv import load_dotenv
@@ -33,12 +34,15 @@ def _maps_url(lat: float, lng: float) -> str:
 
 
 def cari_faskes_db(lokasi: str, kebutuhan: str = "puskesmas", limit: int = 5) -> list[dict]:
-    """Cari faskes yang alamatnya memuat semua kata pada `lokasi`.
+    """Cari faskes yang alamat atau namanya memuat semua kata pada `lokasi`.
+
+    Nama kecamatan di data hanya ada pada nama Puskesmas (mis. "Puskesmas Gambir"),
+    sedangkan alamat berisi jalan dan kota, sehingga keduanya dicocokkan.
 
     Mengembalikan list kosong bila tidak ada yang cocok atau lokasi kosong.
     """
     tipe = TIPE_BY_KEBUTUHAN.get(kebutuhan.strip().lower(), "puskesmas")
-    tokens = [t for t in lokasi.lower().split() if t not in STOPWORDS]
+    tokens = [t for t in re.findall(r"\w+", lokasi.lower()) if t not in STOPWORDS]
     if not tokens:
         return []
 
@@ -46,7 +50,7 @@ def cari_faskes_db(lokasi: str, kebutuhan: str = "puskesmas", limit: int = 5) ->
     clauses = []
     for i, token in enumerate(tokens):
         params[f"t{i}"] = f"%{token}%"
-        clauses.append(f"AND alamat ILIKE %(t{i})s")
+        clauses.append(f"AND (alamat ILIKE %(t{i})s OR nama_faskes ILIKE %(t{i})s)")
     sql = QUERY.format(filters=" ".join(clauses))
 
     with psycopg.connect(os.environ["DATABASE_URL"], connect_timeout=5) as conn:
