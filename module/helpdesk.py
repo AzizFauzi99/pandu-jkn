@@ -4,12 +4,13 @@ from utils.helpdesk_prompt import helpdesk_prompt
 helpdesk_subagent = {
     "name": "helpdesk",
     "description": (
-        "Tangani pertanyaan administratif dan statistik seputar BPJS Kesehatan/JKN: "
-        "status kepesertaan dan kelayakan mengikuti BPJS milik pengguna sendiri, "
-        "segmen peserta, kelas rawat, badan usaha, kunjungan faskes, serta sebaran "
-        "menurut wilayah. Gunakan subagent ini untuk pertanyaan yang jawabannya perlu "
-        "diambil dari database BPJS. "
-        "Jangan gunakan untuk keluhan atau gejala kesehatan pengguna."
+        "Tangani pertanyaan pribadi pengguna tentang dirinya sendiri: status dan "
+        "kelayakan kepesertaan BPJS/JKN, riwayat kunjungan ke faskes dan rumah sakit, "
+        "diagnosis yang paling sering muncul, biaya klaim yang dibayar BPJS, data "
+        "profil akun, serta panduan prosedur BPJS (iuran, ganti faskes, kartu hilang, "
+        "dokumen pendaftaran). Data pribadi hanya untuk pengguna yang sedang login. "
+        "Jangan gunakan untuk keluhan atau gejala kesehatan, dan tidak untuk "
+        "statistik umum atau data orang lain."
     ),
     "system_prompt": helpdesk_prompt,
     "tools": bpjs_tools,
