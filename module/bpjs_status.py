@@ -44,6 +44,9 @@ def _hasil(user_id: str, kategori: str, alasan: str, tindakan: str, baris: dict 
         "status": baris["status"] if baris else None,
         "segmen": baris["segmen"] if baris else None,
         "kelasRawat": baris["kelas_rawat"] if baris else None,
+        "jenisFktp": baris["jenis_fktp"] if baris else None,
+        "provinsiFktp": baris["provinsi_fktp"] if baris else None,
+        "kabupatenFktp": baris["kabupaten_fktp"] if baris else None,
         "bisaIkut": bisa_ikut[kategori],
         "kategori": kategori,
         "alasan": alasan,
@@ -67,7 +70,10 @@ def cek_status(user_id: str):
         select k.pstv17 as status_kode,
                status.label_text as status,
                segmen.label_text as segmen,
-               kelas.label_text as kelas_rawat
+               kelas.label_text as kelas_rawat,
+               jenis_fktp.label_text as jenis_fktp,
+               provinsi_fktp.label_text as provinsi_fktp,
+               kabupaten_fktp.label_text as kabupaten_fktp
         from bpjs_kepesertaan k
         left join bpjs_metadata_lookup status
                on status.variable_name = 'PSTV17' and status.code_value = k.pstv17
@@ -75,6 +81,12 @@ def cek_status(user_id: str):
                on segmen.variable_name = 'PSTV08' and segmen.code_value = k.pstv08
         left join bpjs_metadata_lookup kelas
                on kelas.variable_name = 'PSTV07' and kelas.code_value = k.pstv07
+        left join bpjs_metadata_lookup jenis_fktp
+               on jenis_fktp.variable_name = 'PSTV12' and jenis_fktp.code_value = k.pstv12
+        left join bpjs_metadata_lookup provinsi_fktp
+               on provinsi_fktp.variable_name = 'PSTV13_NEW' and provinsi_fktp.code_value = k.pstv13_new
+        left join bpjs_metadata_lookup kabupaten_fktp
+               on kabupaten_fktp.variable_name = 'PSTV14' and kabupaten_fktp.code_value = k.pstv14
         where k.pstv01 = %s
         """,
         (int(bersih),),
