@@ -1,11 +1,13 @@
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
+from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 
 from module.bpjs_tools import get_bpjs_status
 from module.faskes import cari_faskes_db
+from module.profile_store import get_profile_by_nik
 from utils.diagnostic_prompt import diagnostic_prompt
 
 logger = logging.getLogger("uvicorn.error")
@@ -87,6 +89,43 @@ def cari_faskes(kota: str, kebutuhan: str = "puskesmas") -> list[dict]:
 
 
 @tool
+def get_profil_pengguna(runtime: ToolRuntime) -> dict:
+    """Ambil data kesehatan dasar milik pengguna yang sedang login: usia, jenis
+    kelamin, tinggi badan, berat badan, alergi, dan riwayat penyakit.
+
+    Panggil tanpa argumen di awal anamnesis, sebelum menanyakan data tersebut.
+    """
+    user_nik = runtime.config["configurable"]["user_nik"]
+    logger.info("tool get_profil_pengguna user_nik=%r", user_nik)
+    try:
+        profile = get_profile_by_nik(user_nik)
+    except Exception:
+        logger.exception("get_profil_pengguna gagal mengakses database")
+        return {
+            "tersedia": False,
+            "saran": "Profil tidak dapat diakses; tanyakan data yang dibutuhkan ke pengguna.",
+        }
+
+    usia = None
+    if profile.tanggal_lahir:
+        today = date.today()
+        born = profile.tanggal_lahir
+        usia = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+
+    # Nama, NIK, dan nomor HP sengaja tidak disertakan.
+    return {
+        "tersedia": True,
+        "usia": usia,
+        "jenis_kelamin": profile.jenis_kelamin,
+        "tinggi_badan_cm": profile.tinggi_badan_cm,
+        "berat_badan_kg": profile.berat_badan_kg,
+        "alergi": profile.alergi_makanan,
+        "riwayat_penyakit": profile.riwayat_penyakit,
+        "catatan": "Field bernilai null atau list kosong berarti belum diisi; tanyakan ke pengguna.",
+    }
+
+
+@tool
 def buat_ringkasan_dokter(
     keluhan_utama: str,
     onset: str,
@@ -138,5 +177,11 @@ diagnostic_subagent = {
         "Bertanya balik jika data kurang."
     ),
     "system_prompt": diagnostic_prompt,
-    "tools": [check_red_flags, cari_faskes, get_bpjs_status, buat_ringkasan_dokter],
+    "tools": [
+        check_red_flags,
+        cari_faskes,
+        get_bpjs_status,
+        get_profil_pengguna,
+        buat_ringkasan_dokter,
+    ],
 }
