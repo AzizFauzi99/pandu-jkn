@@ -2,8 +2,10 @@ import logging
 from pathlib import Path
 
 import psycopg
+from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 
+from module.bpjs_status import cek_status
 from utils.db import is_select_only, run_select
 
 logger = logging.getLogger("uvicorn.error")
@@ -51,4 +53,19 @@ def query_database(sql: str) -> list[dict] | dict:
         }
 
 
-bpjs_tools = [baca_knowledge, query_database]
+@tool
+def get_bpjs_status(runtime: ToolRuntime) -> dict:
+    """Cek status kepesertaan JKN dan kelayakan mengikuti BPJS milik pengguna yang sedang login."""
+    user_nik = runtime.config["configurable"]["user_nik"]
+    logger.info("tool get_bpjs_status user_nik=%r", user_nik)
+    try:
+        return cek_status(user_nik)
+    except psycopg.Error as e:
+        logger.info("tool get_bpjs_status gagal: %s", e)
+        return {
+            "error": str(e),
+            "saran": "Sampaikan bahwa data kepesertaan sedang tidak dapat diakses.",
+        }
+
+
+bpjs_tools = [baca_knowledge, query_database, get_bpjs_status]

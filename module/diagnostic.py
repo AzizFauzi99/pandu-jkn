@@ -2,10 +2,9 @@ import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-import psycopg
 from langchain_core.tools import tool
 
-from module.bpjs_status import cek_status
+from module.bpjs_tools import get_bpjs_status
 from module.faskes import cari_faskes_db
 from utils.diagnostic_prompt import diagnostic_prompt
 
@@ -85,24 +84,6 @@ def cari_faskes(kota: str, kebutuhan: str = "puskesmas") -> list[dict]:
             ),
         }
     ]
-
-
-@tool
-def get_bpjs_status(user_id: str) -> dict:
-    """Cek status kepesertaan JKN dan apakah pengguna dapat mengikuti BPJS.
-
-    Args:
-        user_id: Nomor ID peserta pada kartu JKN.
-    """
-    logger.info("tool get_bpjs_status user_id=%r", user_id)
-    try:
-        return cek_status(user_id)
-    except psycopg.Error as e:
-        logger.info("tool get_bpjs_status gagal: %s", e)
-        return {
-            "error": str(e),
-            "saran": "Sampaikan bahwa data kepesertaan sedang tidak dapat diakses.",
-        }
 
 
 @tool

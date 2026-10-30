@@ -71,7 +71,7 @@ def post_chat(request: ChatRequest, user: User = Depends(get_current_user)):
         try:
             yield f"data: {json.dumps({'session_id': session_id})}\n\n"
 
-            for token in agents_instance.ai_agent(user_input, session_id):
+            for token in agents_instance.ai_agent(user_input, session_id, user.id):
                 payload = json.dumps({"answer": token})
                 yield f"data: {payload}\n\n"
 

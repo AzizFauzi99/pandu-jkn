@@ -19,7 +19,7 @@ class Agents:
     def __init__(self):
         self.llm_instance = load_llm
         self.checkpointer_instance = get_checkpointer()
-        self.subagents = [diagnostic_subagent, nutrition_subagent]
+        self.subagents = [diagnostic_subagent, nutrition_subagent, helpdesk_subagent]
 
     def build_supervisor(self):
         current_datetime = datetime.now(ZoneInfo("Asia/Jakarta")).isoformat(
@@ -40,9 +40,9 @@ class Agents:
     def delete_messages(self, session_id: str):
         self.checkpointer_instance.delete_thread(session_id)
 
-    def ai_agent(self, user_input: str, session_id: str):
+    def ai_agent(self, user_input: str, session_id: str, user_nik: str):
         agent_instance = self.build_supervisor()
-        config = {"configurable": {"thread_id": session_id}}
+        config = {"configurable": {"thread_id": session_id, "user_nik": user_nik}}
 
         for chunk, _ in agent_instance.stream(
             {"messages": [{"role": "user", "content": user_input}]},
